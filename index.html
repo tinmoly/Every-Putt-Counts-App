@@ -47,7 +47,21 @@
     }
 
     .made { background: #2ecc71; }
-    .missed { background: #e74c3c; }
+    .missed { background: #e74c3c; display: flex; align-items: center; justify-content: center; }
+
+    /* X icon styling with subtle shadow border */
+    .missed .icon-x {
+      display: inline-block;
+      padding: 4px 8px;
+      border-radius: 6px;
+      background: rgba(0,0,0,0.08);
+      box-shadow: 0 0 0 2px rgba(0,0,0,0.12), 0 4px 10px rgba(0,0,0,0.25);
+      margin-right: 8px;
+      line-height: 1;
+      font-weight: 700;
+      font-size: 1.05em;
+      transform: translateZ(0);
+    }
 
     .install {
       background: #3498db;
@@ -58,6 +72,17 @@
       margin-top: 20px;
       text-align: center;
       font-size: 18px;
+    }
+
+    .small-select {
+      width: auto;
+      padding: 8px;
+      border-radius: 8px;
+      font-size: 14px;
+      background: #1c7c5b;
+      color: #fff;
+      border: none;
+      cursor: pointer;
     }
   </style>
 </head>
@@ -74,7 +99,7 @@
     </select>
 
     <button class="made" onclick="recordMade()">✅ Made</button>
-    <button class="missed" onclick="recordMissed()">❌ Missed</button>
+    <button class="missed" onclick="recordMissed()"><span class="icon-x" aria-hidden="true">×</span>Missed</button>
     <button onclick="newSession()" style="background:#f1c40f;color:#000">🔄 New Session</button>
 
     <div class="stats">
