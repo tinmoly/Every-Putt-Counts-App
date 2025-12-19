@@ -25,6 +25,7 @@
 
     h1, h2 { text-align: center; margin-bottom: 10px; }
 
+    /* Make all buttons and selects bold */
     select, button {
       width: 100%;
       padding: 15px;
@@ -33,6 +34,7 @@
       border-radius: 10px;
       margin-top: 10px;
       cursor: pointer;
+      font-weight: 700;
     }
 
     select { background: #1c7c5b; color: white; }
@@ -46,6 +48,7 @@
       color: #fff;
       border: none;
       cursor: pointer;
+      font-weight: 700;
     }
 
     .made { background: #2ecc71; }
@@ -69,6 +72,94 @@
       font-size: 13px;
       opacity: 0.85;
       margin-top: 4px;
+    }
+
+    .session-detail-buttons {
+      margin-top: 10px;
+      display: flex;
+      gap: 8px;
+      justify-content: flex-end;
+    }
+
+    .btn-close {
+      background: #888;
+      color: #000; /* black text requested */
+      padding: 8px 12px;
+      border-radius: 8px;
+      border: none;
+      cursor: pointer;
+      font-weight: 700; /* ensure bold */
+    }
+
+    .btn-delete {
+      background: #E34234;
+      color: #000; /* black text requested */
+      padding: 8px 12px;
+      border-radius: 8px;
+      border: none;
+      cursor: pointer;
+      font-weight: 700; /* ensure bold */
+    }
+
+    /* Undo banner */
+    .undo-banner {
+      display: none;
+      margin-top: 12px;
+      padding: 10px;
+      background: linear-gradient(90deg,#fff3b0,#ffd28a);
+      color: #000;
+      border-radius: 8px;
+      font-size: 14px;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      box-shadow: 0 6px 18px rgba(0,0,0,0.15);
+    }
+
+    .undo-banner-content { display:flex; align-items:center; gap:8px; }
+
+    .undo-clock {
+      width: 40px;
+      height: 40px;
+      flex: 0 0 40px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .undo-clock svg { width: 36px; height: 36px; display:block; }
+
+    .undo-clock .ring {
+      stroke: #333;
+      stroke-width: 2.5;
+      fill: none;
+      transition: stroke-dashoffset 0.1s linear;
+    }
+
+    .undo-clock .ring-bg {
+      stroke: rgba(0,0,0,0.12);
+      stroke-width: 2.5;
+      fill: none;
+    }
+
+    .undo-text {
+      display:flex;
+      flex-direction:column;
+      gap:4px;
+    }
+
+    .undo-countdown {
+      font-weight:700;
+    }
+
+    .undo-btn {
+      background: #fff;
+      border: 1px solid #ccc;
+      padding: 6px 10px;
+      border-radius: 8px;
+      cursor: pointer;
+      color: #000;
+      font-weight: 700;
     }
   </style>
 </head>
@@ -110,12 +201,39 @@
       </select>
     </div>
 
+    <!-- Undo banner appears here when a session is deleted and can be undone -->
+    <div id="undoBanner" class="undo-banner" role="status" aria-live="polite">
+      <div class="undo-banner-content" id="undoBannerText">
+        <div class="undo-clock" aria-hidden="true">
+          <svg viewBox="0 0 36 36" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+            <!-- background ring -->
+            <circle class="ring-bg" cx="18" cy="18" r="12"></circle>
+            <!-- animated progress ring -->
+            <circle id="undoRing" class="ring" cx="18" cy="18" r="12" stroke-dasharray="0" stroke-dashoffset="0"></circle>
+            <!-- removed clock hand as requested -->
+          </svg>
+        </div>
+
+        <div class="undo-text">
+          <div id="undoMessage">Session deleted.</div>
+          <div><span class="undo-countdown" id="undoSeconds">10</span>s to undo</div>
+        </div>
+      </div>
+
+      <div>
+        <button class="undo-btn" onclick="undoDelete()">Undo</button>
+      </div>
+    </div>
+
     <div id="history" style="text-align:left;margin-top:10px"></div>
 
     <div id="sessionDetail" style="display:none;margin-top:16px;padding:12px;background:#0e4f3a;border-radius:10px;">
       <h3 id="sessionDetailTitle">Session Details</h3>
       <div id="sessionDetailBody"></div>
-      <button onclick="closeSessionDetail()" style="margin-top:10px;background:#888">Close</button>
+      <div class="session-detail-buttons">
+        <button class="btn-delete" onclick="deleteSession()">🗑️ Delete</button>
+        <button class="btn-close" onclick="closeSessionDetail()">Close</button>
+      </div>
     </div>
   </div>
 
@@ -135,8 +253,17 @@
       20: 12.3
     };
 
+    const UNDO_TIMEOUT = 10000; // milliseconds to allow undo
+    let undoTimeoutId = null;   // the finalizing timeout
+    let undoIntervalId = null;  // interval to update the UI countdown / animation
+    let undoStartTime = null;
+    let undoDuration = null;
+
+    let lastDeleted = null; // { session, index, timestamp }
+
     let currentDistance = 3;
     let currentStreak = 0;
+    let openedSessionIndex = null; // tracks which session is currently open in the detail view
 
     let stats = loadStats();
     let sessions = loadSessions();
@@ -233,6 +360,8 @@
         if (!confirm('Delete all session history? This cannot be undone.')) return;
         sessions = [];
         saveSessions();
+        // Clear any pending undo since history is cleared
+        finalizeDelete();
         renderHistory();
       } else if (val === 'export') {
         exportHistoryCSV();
@@ -316,6 +445,9 @@
       const body = document.getElementById('sessionDetailBody');
       const title = document.getElementById('sessionDetailTitle');
 
+      // Remember which session is open so the Delete button can act on it
+      openedSessionIndex = sessionIndex;
+
       title.textContent = `Session ${sessionIndex + 1} — ${new Date(session.date).toLocaleString()}`;
       body.innerHTML = '';
 
@@ -336,11 +468,161 @@
     }
 
     function closeSessionDetail() {
+      openedSessionIndex = null;
       document.getElementById('sessionDetail').style.display = 'none';
     }
 
+    // Undo helper functions
+    function showUndoBanner() {
+      const banner = document.getElementById('undoBanner');
+      if (!lastDeleted) {
+        banner.style.display = 'none';
+        return;
+      }
+      const messageEl = document.getElementById('undoMessage');
+      messageEl.textContent = `Deleted: ${new Date(lastDeleted.timestamp).toLocaleString()}`;
+      banner.style.display = 'flex';
+      updateUndoUI(); // immediate update
+    }
+
+    function hideUndoBanner() {
+      const banner = document.getElementById('undoBanner');
+      banner.style.display = 'none';
+    }
+
+    function clearUndoTimer() {
+      if (undoTimeoutId) {
+        clearTimeout(undoTimeoutId);
+        undoTimeoutId = null;
+      }
+      if (undoIntervalId) {
+        clearInterval(undoIntervalId);
+        undoIntervalId = null;
+      }
+      undoStartTime = null;
+      undoDuration = null;
+    }
+
+    function finalizeDelete() {
+      // After undo window expires, clear lastDeleted and remove stored value
+      lastDeleted = null;
+      localStorage.removeItem('lastDeletedSession');
+      clearUndoTimer();
+      hideUndoBanner();
+    }
+
+    function updateUndoUI() {
+      if (!lastDeleted || !undoStartTime || !undoDuration) {
+        hideUndoBanner();
+        return;
+      }
+      const elapsed = Date.now() - undoStartTime;
+      let remaining = Math.max(0, undoDuration - elapsed);
+      const secondsLeft = Math.ceil(remaining / 1000);
+      document.getElementById('undoSeconds').textContent = secondsLeft;
+
+      // progress ring update
+      const ring = document.getElementById('undoRing');
+      const R = 12;
+      const C = 2 * Math.PI * R;
+      ring.setAttribute('stroke-dasharray', C);
+      const fraction = remaining / undoDuration; // 1 -> full, 0 -> empty
+      const offset = C * (1 - fraction);
+      ring.setAttribute('stroke-dashoffset', offset);
+
+      // hide if expired
+      if (remaining <= 0) {
+        finalizeDelete();
+      }
+    }
+
+    function startUndoTimer(ms = UNDO_TIMEOUT) {
+      // clear previous timers if any
+      clearUndoTimer();
+      undoStartTime = Date.now();
+      undoDuration = ms;
+
+      // schedule finalizer
+      undoTimeoutId = setTimeout(() => {
+        finalizeDelete();
+      }, ms);
+
+      // interval to update UI frequently for smooth animation
+      undoIntervalId = setInterval(updateUndoUI, 100);
+      showUndoBanner();
+    }
+
+    function deleteSession() {
+      if (openedSessionIndex === null) return;
+
+      const confirmed = confirm('Delete this session? This will permanently erase the session and cannot be undone. Are you sure you want to delete this session forever? (You will have a short window to undo.)');
+      if (!confirmed) return;
+
+      // Save the deleted session so it can be undone
+      const sessionCopy = JSON.parse(JSON.stringify(sessions[openedSessionIndex]));
+      lastDeleted = {
+        session: sessionCopy,
+        index: openedSessionIndex,
+        timestamp: Date.now()
+      };
+      localStorage.setItem('lastDeletedSession', JSON.stringify(lastDeleted));
+
+      // Remove the session from the array and save
+      sessions.splice(openedSessionIndex, 1);
+      saveSessions();
+
+      // Close the detail and refresh the history list
+      closeSessionDetail();
+      renderHistory();
+
+      // Start undo timer
+      startUndoTimer(UNDO_TIMEOUT);
+    }
+
+    function undoDelete() {
+      if (!lastDeleted) return;
+
+      // Make sure index is within current bounds
+      const insertIndex = Math.min(Math.max(0, lastDeleted.index), sessions.length);
+      sessions.splice(insertIndex, 0, lastDeleted.session);
+      saveSessions();
+
+      // Clear the pending deletion
+      lastDeleted = null;
+      localStorage.removeItem('lastDeletedSession');
+      clearUndoTimer();
+      hideUndoBanner();
+
+      renderHistory();
+      alert('Session restored.');
+    }
+
+    // On load, check if there is a pending lastDeleted in storage and restore state
+    function loadLastDeletedFromStorage() {
+      const raw = localStorage.getItem('lastDeletedSession');
+      if (!raw) return null;
+      try {
+        const parsed = JSON.parse(raw);
+        const age = Date.now() - (parsed.timestamp || 0);
+        if (age >= UNDO_TIMEOUT) {
+          // expired
+          localStorage.removeItem('lastDeletedSession');
+          return null;
+        }
+        // still valid — restore and start timer for remaining time
+        lastDeleted = parsed;
+        startUndoTimer(UNDO_TIMEOUT - age);
+        return lastDeleted;
+      } catch (e) {
+        localStorage.removeItem('lastDeletedSession');
+        return null;
+      }
+    }
+
+    // initialize
     updateStats();
     renderHistory();
+    loadLastDeletedFromStorage();
   </script>
 </body>
 </html>
