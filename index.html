@@ -3,10 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Putting Practice App</title>
-
-  <!-- Inline PWA Manifest -->
-  <link rel="manifest" href="data:application/json,{"name":"Putting Practice","short_name":"Putting","start_url":"./","display":"standalone","background_color":"#0b3d2e","theme_color":"#0b3d2e","icons[...]}" />
+  <title>Fore!Putt Practice App — Version 1.3</title>
 
   <style>
     body {
@@ -21,15 +18,12 @@
       background: #145a43;
       border-radius: 12px;
       padding: 20px;
-      max-width: 420px;
+      max-width: 460px;
       margin: 0 auto;
       box-shadow: 0 10px 25px rgba(0,0,0,0.3);
     }
 
-    h1 {
-      text-align: center;
-      margin-bottom: 10px;
-    }
+    h1, h2 { text-align: center; margin-bottom: 10px; }
 
     select, button {
       width: 100%;
@@ -41,7 +35,8 @@
       cursor: pointer;
     }
 
-    /* smaller dropdown used for history actions */
+    select { background: #1c7c5b; color: white; }
+
     .small-select {
       width: auto;
       padding: 8px;
@@ -53,29 +48,33 @@
       cursor: pointer;
     }
 
-    select {
-      background: #1c7c5b;
-      color: white;
-    }
-
     .made { background: #2ecc71; }
-    .missed { background: #e74c3c; }
+    .missed { background: #E34234; }
 
-    .install {
-      background: #3498db;
-      display: none;
+    .stats { margin-top: 20px; text-align: center; font-size: 18px; }
+
+    .badge {
+      margin-top: 8px;
+      padding: 10px;
+      background: #0e4f3a;
+      border-radius: 10px;
+      font-size: 15px;
+      text-align: center;
     }
 
-    .stats {
-      margin-top: 20px;
-      text-align: center;
-      font-size: 18px;
+    .badge.met { background: #1f7a4a; }
+    .badge.not-met { background: #6b2a2a; }
+
+    .tour {
+      font-size: 13px;
+      opacity: 0.85;
+      margin-top: 4px;
     }
   </style>
 </head>
 <body>
   <div class="card">
-    <h1 id="distanceTitle">6-Foot Putts</h1>
+    <h1 id="distanceTitle">3-Foot Putts</h1>
 
     <select id="distance" onchange="changeDistance()">
       <option value="3" selected>3 Feet</option>
@@ -84,6 +83,7 @@
       <option value="6">6 Feet</option>
       <option value="8">8 Feet</option>
       <option value="10">10 Feet</option>
+      <option value="12">12 Feet</option>
       <option value="15">15 Feet</option>
       <option value="20">20 Feet</option>
     </select>
@@ -96,7 +96,10 @@
       <p>Made: <span id="made">0</span></p>
       <p>Missed: <span id="missed">0</span></p>
       <p>Make %: <span id="percent">0</span>%</p>
+      <p>🔥 Streak: <span id="streak">0</span></p>
     </div>
+
+    <div class="badge" id="targetBadge"></div>
 
     <div style="display:flex;align-items:center;justify-content:space-between;margin-top:16px;">
       <h3 style="margin:0;">Session History</h3>
@@ -108,28 +111,50 @@
     </div>
 
     <div id="history" style="text-align:left;margin-top:10px"></div>
+
+    <div id="sessionDetail" style="display:none;margin-top:16px;padding:12px;background:#0e4f3a;border-radius:10px;">
+      <h3 id="sessionDetailTitle">Session Details</h3>
+      <div id="sessionDetailBody"></div>
+      <button onclick="closeSessionDetail()" style="margin-top:10px;background:#888">Close</button>
+    </div>
   </div>
 
   <script>
-    // --- Putting Logic ---
-    let currentDistance = 6;
+    const DISTANCES = [3,4,5,6,8,10,12,15,20];
+
+    // PGA Tour average make percentages
+    const PGA_TOUR_AVG = {
+      3: 99.5,
+      4: 92.4,
+      5: 81.4,
+      6: 69.4,
+      8: 53.1,
+      10: 41.9,
+      12: 30.7,
+      15: 18.4,
+      20: 12.3
+    };
+
+    let currentDistance = 3;
+    let currentStreak = 0;
 
     let stats = loadStats();
     let sessions = loadSessions();
 
     function defaultStats() {
-      return {
-        3: { made: 0, missed: 0 },
-        6: { made: 0, missed: 0 },
-        9: { made: 0, missed: 0 },
-        12: { made: 0, missed: 0 },
-        20: { made: 0, missed: 0 }
-      };
+      const obj = {};
+      DISTANCES.forEach(d => obj[d] = { made: 0, missed: 0 });
+      return obj;
     }
 
     function loadStats() {
       const saved = localStorage.getItem('puttingStats');
-      return saved ? JSON.parse(saved) : defaultStats();
+      if (!saved) return defaultStats();
+      const parsed = JSON.parse(saved);
+      DISTANCES.forEach(d => {
+        if (!parsed[d]) parsed[d] = { made: 0, missed: 0 };
+      });
+      return parsed;
     }
 
     function loadSessions() {
@@ -137,68 +162,71 @@
       return saved ? JSON.parse(saved) : [];
     }
 
-    function saveSessions() {
-      localStorage.setItem('puttingSessions', JSON.stringify(sessions));
-    }
-
-    function saveStats() {
-      localStorage.setItem('puttingStats', JSON.stringify(stats));
-    }
+    function saveStats() { localStorage.setItem('puttingStats', JSON.stringify(stats)); }
+    function saveSessions() { localStorage.setItem('puttingSessions', JSON.stringify(sessions)); }
 
     function changeDistance() {
-      const select = document.getElementById("distance");
-      currentDistance = select.value;
-      document.getElementById("distanceTitle").textContent = `${currentDistance}-Foot Putts`;
+      currentDistance = document.getElementById('distance').value;
+      document.getElementById('distanceTitle').textContent = `${currentDistance}-Foot Putts`;
+      currentStreak = 0;
       updateStats();
-      renderHistory();
     }
 
     function recordMade() {
       stats[currentDistance].made++;
+      currentStreak++;
       saveStats();
       updateStats();
     }
 
     function recordMissed() {
       stats[currentDistance].missed++;
+      currentStreak = 0;
       saveStats();
       updateStats();
     }
 
     function updateStats() {
-      const made = stats[currentDistance].made;
-      const missed = stats[currentDistance].missed;
+      const { made, missed } = stats[currentDistance];
       const total = made + missed;
       const percent = total === 0 ? 0 : Math.round((made / total) * 100);
 
-      document.getElementById("made").textContent = made;
-      document.getElementById("missed").textContent = missed;
-      document.getElementById("percent").textContent = percent;
+      document.getElementById('made').textContent = made;
+      document.getElementById('missed').textContent = missed;
+      document.getElementById('percent').textContent = percent;
+      document.getElementById('streak').textContent = currentStreak;
+
+      const target = PGA_TOUR_AVG[currentDistance];
+      const badge = document.getElementById('targetBadge');
+
+      if (percent >= target) {
+        badge.className = 'badge met';
+        badge.innerHTML = `<strong>🏆 Nice Job, Pro! You're beating the PGA Tour avg!</strong><br>Target: ${target}%<div class="tour">PGA Tour Average Make Rate</div>`;
+      } else {
+        badge.className = 'badge not-met';
+        badge.innerHTML = `🎯 Target: ${target}%<div class="tour">PGA Tour Average Make Rate</div>`;
+      }
     }
 
     function newSession() {
       if (!confirm('Start a new session? This will save the current session and reset all distances.')) return;
 
-      const session = {
+      sessions.push({
         date: new Date().toISOString(),
-        // deep copy stats to freeze the session data
         stats: JSON.parse(JSON.stringify(stats))
-      };
+      });
 
-      sessions.push(session);
       saveSessions();
-
       stats = defaultStats();
       saveStats();
+      currentStreak = 0;
       updateStats();
       renderHistory();
     }
 
-    // History action handler (Export + Delete)
     function handleHistoryAction() {
       const sel = document.getElementById('historyAction');
       const val = sel.value;
-      // reset selection immediately for better UX
       sel.value = '';
 
       if (val === 'delete') {
@@ -211,43 +239,30 @@
       }
     }
 
-    // Export session history to CSV
     function exportHistoryCSV() {
-      if (!sessions || sessions.length === 0) {
+      if (sessions.length === 0) {
         alert('No session history to export.');
         return;
       }
 
-      // CSV header
-      // Columns: SessionNumber, SessionDate, Distance, Made, Missed, TotalPutts, MakePercent
-      let csv = 'Session,Date,Distance,Made,Missed,Total,Make%\\n';
+      let csv = 'Session,Date,Distance,Made,Missed,Total,Make%,PGATourAvg%\n';
 
-      // Use session order (1..N) as saved; if reversed view desired, change accordingly
       sessions.forEach((session, sIndex) => {
         const sessionNum = sIndex + 1;
         const date = new Date(session.date).toLocaleString();
 
-        // iterate distances in a consistent order
-        const distances = Object.keys(session.stats).sort((a,b)=>Number(a)-Number(b));
-        distances.forEach(distance => {
+        DISTANCES.forEach(distance => {
           const d = session.stats[distance] || { made: 0, missed: 0 };
-          const made = d.made || 0;
-          const missed = d.missed || 0;
-          const total = made + missed;
-          const percent = total === 0 ? 0 : Math.round((made / total) * 100);
+          const total = d.made + d.missed;
+          const percent = total === 0 ? 0 : Math.round((d.made / total) * 100);
+          const tour = PGA_TOUR_AVG[distance];
 
-          // escape double quotes by doubling them
-          const row = [
-            sessionNum,
-            date,
-            distance,
-            made,
-            missed,
-            total,
-            percent
-          ].map(String).map(s => `"${s.replace(/"/g,'""')}"`).join(',');
+          const row = [sessionNum, date, distance, d.made, d.missed, total, percent, tour]
+            .map(String)
+            .map(s => `"${s.replace(/"/g,'""')}"`)
+            .join(',');
 
-          csv += row + '\\n';
+          csv += row + '\n';
         });
       });
 
@@ -255,8 +270,7 @@
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      const stamp = new Date().toISOString().replace(/[:.]/g, '-');
-      a.download = `putting_sessions_${stamp}.csv`;
+      a.download = `putting_sessions_${new Date().toISOString().replace(/[:.]/g,'-')}.csv`;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
@@ -273,65 +287,60 @@
       }
 
       sessions.slice().reverse().forEach((session, index) => {
-        const date = new Date(session.date).toLocaleDateString();
-
         let totalMade = 0;
         let totalPutts = 0;
 
         Object.values(session.stats).forEach(d => {
           totalMade += d.made;
-          totalPutts += (d.made + d.missed);
+          totalPutts += d.made + d.missed;
         });
 
         const percent = totalPutts === 0 ? 0 : Math.round((totalMade / totalPutts) * 100);
+        const date = new Date(session.date).toLocaleDateString();
 
         const div = document.createElement('div');
         div.style.padding = '8px';
         div.style.marginBottom = '6px';
         div.style.background = '#1c7c5b';
         div.style.borderRadius = '8px';
-
-        div.innerHTML = `<strong>Session ${sessions.length - index}</strong><br>
-                         ${date} • ${percent}% make rate (${totalPutts} putts)`;
-
+        div.style.cursor = 'pointer';
+        div.innerHTML = `<strong>Session ${sessions.length - index}</strong><br>${date} • ${percent}% make rate (${totalPutts} putts)`;
+        div.onclick = () => openSessionDetail(sessions.length - 1 - index);
         historyDiv.appendChild(div);
       });
     }
 
-    // initialize UI
+    function openSessionDetail(sessionIndex) {
+      const session = sessions[sessionIndex];
+      const detail = document.getElementById('sessionDetail');
+      const body = document.getElementById('sessionDetailBody');
+      const title = document.getElementById('sessionDetailTitle');
+
+      title.textContent = `Session ${sessionIndex + 1} — ${new Date(session.date).toLocaleString()}`;
+      body.innerHTML = '';
+
+      DISTANCES.forEach(d => {
+        const stat = session.stats[d] || { made: 0, missed: 0 };
+        const total = stat.made + stat.missed;
+        const percent = total === 0 ? 0 : Math.round((stat.made / total) * 100);
+
+        const row = document.createElement('div');
+        row.style.padding = '6px 0';
+        const tourAvg = PGA_TOUR_AVG[d];
+        const star = percent >= tourAvg && total > 0 ? ' ⭐' : '';
+        row.innerHTML = `<strong>${d} ft${star}:</strong> ${stat.made}/${total} (${percent}%) — PGA ${tourAvg}%`;
+        body.appendChild(row);
+      });
+
+      detail.style.display = 'block';
+    }
+
+    function closeSessionDetail() {
+      document.getElementById('sessionDetail').style.display = 'none';
+    }
+
     updateStats();
     renderHistory();
-
-    // --- PWA: Install Prompt ---
-    let deferredPrompt;
-    const installBtn = document.getElementById('installBtn');
-
-    window.addEventListener('beforeinstallprompt', (e) => {
-      e.preventDefault();
-      deferredPrompt = e;
-      if (installBtn) installBtn.style.display = 'block';
-    });
-
-    if (installBtn) {
-      installBtn.addEventListener('click', async () => {
-        installBtn.style.display = 'none';
-        if (deferredPrompt) {
-          deferredPrompt.prompt();
-          await deferredPrompt.userChoice;
-          deferredPrompt = null;
-        }
-      });
-    }
-
-    // --- PWA: Service Worker (inline via Blob) ---
-    if ('serviceWorker' in navigator) {
-      const swCode = `self.addEventListener('install', e => self.skipWaiting());
-self.addEventListener('activate', e => self.clients.claim());
-self.addEventListener('fetch', e => {});`;
-      const blob = new Blob([swCode], { type: 'text/javascript' });
-      const swUrl = URL.createObjectURL(blob);
-      navigator.serviceWorker.register(swUrl);
-    }
   </script>
 </body>
 </html>
