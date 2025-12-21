@@ -3,626 +3,136 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Fore!Putt Practice App — Version 1.3</title>
+  <title>Fore!Putt Practice App — Version 1.5 (Fixed)</title>
 
   <style>
-    body {
-      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-      background: #0b3d2e;
-      color: #ffffff;
-      margin: 0;
-      padding: 20px;
-    }
+    body{font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:#0b3d2e;color:#fff;margin:0;padding:20px}
+    body.flash-green{animation:flashGreen .15s ease-in-out}
+    body.flash-red{animation:flashRed .15s ease-in-out}
+    @keyframes flashGreen{from{background:#0b3d2e}to{background:#145a43}}
+    @keyframes flashRed{from{background:#0b3d2e}to{background:#6b2a2a}}
 
-    .card {
-      background: #145a43;
-      border-radius: 12px;
-      padding: 20px;
-      max-width: 460px;
-      margin: 0 auto;
-      box-shadow: 0 10px 25px rgba(0,0,0,0.3);
-    }
+    .card{background:#145a43;border-radius:14px;padding:20px;max-width:460px;margin:0 auto;box-shadow:0 10px 25px rgba(0,0,0,.3)}
+    h1,h3{text-align:center;margin-bottom:10px}
 
-    h1, h2 { text-align: center; margin-bottom: 10px; }
+    .distance-row{display:flex;gap:8px;overflow-x:auto;margin-bottom:12px}
+    .distance-btn{background:#1c7c5b;border:none;padding:10px 18px;border-radius:999px;font-weight:800;color:#fff;cursor:pointer;white-space:nowrap;font-size:22px}
+    .distance-btn.active{background:#2ecc71;color:#000}
 
-    /* Make all buttons and selects bold */
-    select, button {
-      width: 100%;
-      padding: 15px;
-      font-size: 18px;
-      border: none;
-      border-radius: 10px;
-      margin-top: 10px;
-      cursor: pointer;
-      font-weight: 700;
-    }
+    button{width:100%;border:none;border-radius:14px;cursor:pointer;font-weight:800;margin-top:10px}
+    .made,.missed{height:80px;font-size:32px}
+    .made{background:#2ecc71;color:#000}
+    .missed{background:#E34234;color:#000}
+    button:active{transform:scale(.97)}
 
-    select { background: #1c7c5b; color: white; }
+    .stats{text-align:center;font-size:18px;margin-top:20px}
+    .badge{margin-top:10px;padding:10px;border-radius:10px;text-align:center;background:#0e4f3a}
+    .badge.met{background:#1f7a4a}.badge.not-met{background:#6b2a2a}
 
-    .small-select {
-      width: auto;
-      padding: 8px;
-      border-radius: 8px;
-      font-size: 14px;
-      background: #1c7c5b;
-      color: #fff;
-      border: none;
-      cursor: pointer;
-      font-weight: 700;
-    }
-
-    .made { background: #2ecc71; }
-    .missed { background: #E34234; }
-
-    .stats { margin-top: 20px; text-align: center; font-size: 18px; }
-
-    .badge {
-      margin-top: 8px;
-      padding: 10px;
-      background: #0e4f3a;
-      border-radius: 10px;
-      font-size: 15px;
-      text-align: center;
-    }
-
-    .badge.met { background: #1f7a4a; }
-    .badge.not-met { background: #6b2a2a; }
-
-    .tour {
-      font-size: 13px;
-      opacity: 0.85;
-      margin-top: 4px;
-    }
-
-    .session-detail-buttons {
-      margin-top: 10px;
-      display: flex;
-      gap: 8px;
-      justify-content: flex-end;
-    }
-
-    .btn-close {
-      background: #888;
-      color: #000; /* black text requested */
-      padding: 8px 12px;
-      border-radius: 8px;
-      border: none;
-      cursor: pointer;
-      font-weight: 700; /* ensure bold */
-    }
-
-    .btn-delete {
-      background: #E34234;
-      color: #000; /* black text requested */
-      padding: 8px 12px;
-      border-radius: 8px;
-      border: none;
-      cursor: pointer;
-      font-weight: 700; /* ensure bold */
-    }
-
-    /* Undo banner */
-    .undo-banner {
-      display: none;
-      margin-top: 12px;
-      padding: 10px;
-      background: linear-gradient(90deg,#fff3b0,#ffd28a);
-      color: #000;
-      border-radius: 8px;
-      font-size: 14px;
-      align-items: center;
-      justify-content: space-between;
-      gap: 8px;
-      box-shadow: 0 6px 18px rgba(0,0,0,0.15);
-    }
-
-    .undo-banner-content { display:flex; align-items:center; gap:8px; }
-
-    .undo-clock {
-      width: 40px;
-      height: 40px;
-      flex: 0 0 40px;
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-    }
-
-    .undo-clock svg { width: 36px; height: 36px; display:block; }
-
-    .undo-clock .ring {
-      stroke: #333;
-      stroke-width: 2.5;
-      fill: none;
-      transition: stroke-dashoffset 0.1s linear;
-    }
-
-    .undo-clock .ring-bg {
-      stroke: rgba(0,0,0,0.12);
-      stroke-width: 2.5;
-      fill: none;
-    }
-
-    .undo-text {
-      display:flex;
-      flex-direction:column;
-      gap:4px;
-    }
-
-    .undo-countdown {
-      font-weight:700;
-    }
-
-    .undo-btn {
-      background: #fff;
-      border: 1px solid #ccc;
-      padding: 6px 10px;
-      border-radius: 8px;
-      cursor: pointer;
-      color: #000;
-      font-weight: 700;
-    }
+    .history-card{padding:10px;margin-bottom:8px;background:#1c7c5b;border-radius:10px;cursor:pointer}
+    .progress{height:6px;background:rgba(255,255,255,.2);border-radius:999px;margin-top:6px}
+    .progress-fill{height:100%;background:#2ecc71;border-radius:999px}
   </style>
 </head>
 <body>
-  <div class="card">
-    <h1 id="distanceTitle">3-Foot Putts</h1>
+<div class="card">
+  <h1 id="distanceTitle">2-Foot Putts</h1>
+  <div id="distanceRow" class="distance-row"></div>
 
-    <select id="distance" onchange="changeDistance()">
-      <option value="3" selected>3 Feet</option>
-      <option value="4">4 Feet</option>
-      <option value="5">5 Feet</option>
-      <option value="6">6 Feet</option>
-      <option value="8">8 Feet</option>
-      <option value="10">10 Feet</option>
-      <option value="12">12 Feet</option>
-      <option value="15">15 Feet</option>
-      <option value="20">20 Feet</option>
-    </select>
+  <div style="display:flex;gap:10px;">
+  <button class="made" onclick="recordMade()">✅ Made</button>
+  <button class="missed" onclick="recordMissed()">⛔ Missed</button>
+</div>
+  
 
-    <button class="made" onclick="recordMade()">✅ Made</button>
-    <button class="missed" onclick="recordMissed()">⛔ Missed</button>
-    <button onclick="newSession()" style="background:#0096FF;color:#000">🔄 New Session</button>
-
-    <div class="stats">
-      <p>Made: <span id="made">0</span></p>
-      <p>Missed: <span id="missed">0</span></p>
-      <p>⛳ Make %: <span id="percent">0</span>%</p>
-      <p>🔥 Streak: <span id="streak">0</span></p>
-    </div>
-
-    <div class="badge" id="targetBadge"></div>
-
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-top:16px;">
-      <h3 style="margin:0;">Session History</h3>
-      <select id="historyAction" class="small-select" onchange="handleHistoryAction()">
-        <option value="">Actions</option>
-        <option value="export">Export All History</option>
-        <option value="delete">Delete All History</option>
-      </select>
-    </div>
-
-    <!-- Undo banner appears here when a session is deleted and can be undone -->
-    <div id="undoBanner" class="undo-banner" role="status" aria-live="polite">
-      <div class="undo-banner-content" id="undoBannerText">
-        <div class="undo-clock" aria-hidden="true">
-          <svg viewBox="0 0 36 36" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-            <!-- background ring -->
-            <circle class="ring-bg" cx="18" cy="18" r="12"></circle>
-            <!-- animated progress ring -->
-            <circle id="undoRing" class="ring" cx="18" cy="18" r="12" stroke-dasharray="0" stroke-dashoffset="0"></circle>
-            <!-- removed clock hand as requested -->
-          </svg>
-        </div>
-
-        <div class="undo-text">
-          <div id="undoMessage">Session deleted.</div>
-          <div><span class="undo-countdown" id="undoSeconds">10</span>s to undo</div>
-        </div>
-      </div>
-
-      <div>
-        <button class="undo-btn" onclick="undoDelete()">Undo</button>
-      </div>
-    </div>
-
-    <div id="history" style="text-align:left;margin-top:10px"></div>
-
-    <div id="sessionDetail" style="display:none;margin-top:16px;padding:12px;background:#0e4f3a;border-radius:10px;">
-      <h3 id="sessionDetailTitle">Session Details</h3>
-      <div id="sessionDetailBody"></div>
-      <div class="session-detail-buttons">
-        <button class="btn-delete" onclick="deleteSession()">🗑️ Delete</button>
-        <button class="btn-close" onclick="closeSessionDetail()">❌ Close</button>
-      </div>
-    </div>
+  <div class="stats">
+    <p>Made: <span id="made">0</span> | Missed: <span id="missed">0</span></p>
+    <p>⛳ Make %: <span id="percent">0</span>%</p>
+    <p><span id="streakLabel">Streak</span>: <span id="streak">0</span></p>
   </div>
 
-  <script>
-    const DISTANCES = [3,4,5,6,8,10,12,15,20];
+  <div id="targetBadge" class="badge"></div>
 
-    // PGA Tour average make percentages
-    const PGA_TOUR_AVG = {
-      3: 99.5,
-      4: 92.4,
-      5: 81.4,
-      6: 69.4,
-      8: 53.1,
-      10: 41.9,
-      12: 30.7,
-      15: 18.4,
-      20: 12.3
-    };
+  <button onclick="newSession()" style="background:#0096FF;color:#000;height:64px;font-size:24px">🔄 New Session</button>
 
-    const UNDO_TIMEOUT = 10000; // milliseconds to allow undo
-    let undoTimeoutId = null;   // the finalizing timeout
-    let undoIntervalId = null;  // interval to update the UI countdown / animation
-    let undoStartTime = null;
-    let undoDuration = null;
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-top:18px">
+    <h3 style="margin:0">Session History</h3>
+    <select id="historyAction" onchange="handleHistoryAction()" style="background:#1c7c5b;color:#fff;border:none;border-radius:8px;padding:6px 8px;font-weight:700">
+      <option value="">Actions</option>
+      <option value="export">Export All History</option>
+      <option value="delete">Clear All History</option>
+    </select>
+  </div>
+  <div id="history"></div>
 
-    let lastDeleted = null; // { session, index, timestamp }
+  <div id="sessionDetail" style="display:none;margin-top:16px;padding:12px;background:#0e4f3a;border-radius:12px">
+    <h3 id="sessionDetailTitle">Session Details</h3>
+    <div id="sessionDetailBody"></div>
+    <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:10px">
+      <button onclick="deleteSession()" style="background:#E34234;color:#000;padding:10px 14px;border-radius:10px">🗑️ Delete</button>
+      <button onclick="closeSessionDetail()" style="background:#888;color:#000;padding:10px 14px;border-radius:10px">❌ Close</button>
+    </div>
+  </div>
+</div>
 
-    let currentDistance = 3;
-    let currentStreak = 0;
-    let openedSessionIndex = null; // tracks which session is currently open in the detail view
+<script>
+/* ---------- DATA ---------- */
+const DISTANCES=[2,3,4,5,6,7,8,9,10,15,20,30];
+const PGA_TOUR_AVG={2:99,3:96,4:88,5:77,6:66,7:58,8:50,9:45,10:40,15:23,20:15,30:7};
 
-    let stats = loadStats();
-    let sessions = loadSessions();
+let currentDistance=2;
+let stats=loadStats();
+let streaks=loadStreaks();
+let sessions=loadSessions();
 
-    function defaultStats() {
-      const obj = {};
-      DISTANCES.forEach(d => obj[d] = { made: 0, missed: 0 });
-      return obj;
-    }
+const $=id=>document.getElementById(id);
 
-    function loadStats() {
-      const saved = localStorage.getItem('puttingStats');
-      if (!saved) return defaultStats();
-      const parsed = JSON.parse(saved);
-      DISTANCES.forEach(d => {
-        if (!parsed[d]) parsed[d] = { made: 0, missed: 0 };
-      });
-      return parsed;
-    }
+/* ---------- UTIL ---------- */
+let tapLocked=false;const TAP_DELAY=300;
+function withTapLock(fn){if(tapLocked)return;tapLocked=true;fn();setTimeout(()=>tapLocked=false,TAP_DELAY)}
+function haptic(ms){if(navigator.vibrate)navigator.vibrate(ms)}
+function flash(cls){document.body.classList.add(cls);setTimeout(()=>document.body.classList.remove(cls),150)}
 
-    function loadSessions() {
-      const saved = localStorage.getItem('puttingSessions');
-      return saved ? JSON.parse(saved) : [];
-    }
+function getStreakEmojis(val){if(val>=10)return'🔥🔥🔥🔥🔥';if(val>=5)return'🔥🔥🔥';if(val>=3)return'🔥🔥';if(val>=1)return'🔥';return''}
 
-    function saveStats() { localStorage.setItem('puttingStats', JSON.stringify(stats)); }
-    function saveSessions() { localStorage.setItem('puttingSessions', JSON.stringify(sessions)); }
+/* ---------- STORAGE ---------- */
+function defaultStats(){const o={};DISTANCES.forEach(d=>o[d]={made:0,missed:0});return o}
+function loadStats(){const s=JSON.parse(localStorage.getItem('puttingStats'));const b=defaultStats();if(!s)return b;DISTANCES.forEach(d=>{if(s[d])b[d]=s[d]});return b}
+function saveStats(){localStorage.setItem('puttingStats',JSON.stringify(stats))}
 
-    function changeDistance() {
-      currentDistance = document.getElementById('distance').value;
-      document.getElementById('distanceTitle').textContent = `${currentDistance}-Foot Putts`;
-      currentStreak = 0;
-      updateStats();
-    }
+function loadStreaks(){const s=JSON.parse(localStorage.getItem('puttingStreaks'))||{};const b={};DISTANCES.forEach(d=>b[d]=s[d]||0);return b}
+function saveStreaks(){localStorage.setItem('puttingStreaks',JSON.stringify(streaks))}
 
-    function recordMade() {
-      stats[currentDistance].made++;
-      currentStreak++;
-      saveStats();
-      updateStats();
-    }
+function loadSessions(){return JSON.parse(localStorage.getItem('puttingSessions'))||[]}
+function saveSessions(){localStorage.setItem('puttingSessions',JSON.stringify(sessions))}
 
-    function recordMissed() {
-      stats[currentDistance].missed++;
-      currentStreak = 0;
-      saveStats();
-      updateStats();
-    }
+/* ---------- UI ---------- */
+function buildDistanceRow(){const row=$('distanceRow');row.innerHTML='';DISTANCES.forEach(d=>{const b=document.createElement('button');b.className='distance-btn'+(d===currentDistance?' active':'');b.textContent=d+"'";b.onclick=()=>setDistance(d);row.appendChild(b)})}
 
-    function updateStats() {
-      const { made, missed } = stats[currentDistance];
-      const total = made + missed;
-      const percent = total === 0 ? 0 : Math.round((made / total) * 100);
+function setDistance(d){currentDistance=d;$('distanceTitle').textContent=`${d}-Foot Putts`;buildDistanceRow();updateStats()}
 
-      document.getElementById('made').textContent = made;
-      document.getElementById('missed').textContent = missed;
-      document.getElementById('percent').textContent = percent;
-      document.getElementById('streak').textContent = currentStreak;
+function updateStats(){const {made,missed}=stats[currentDistance];const total=made+missed;const pct=total?Math.round(made/total*100):0;$('made').textContent=made;$('missed').textContent=missed;$('percent').textContent=pct;const sVal=streaks[currentDistance]||0;$('streak').textContent=sVal;$('streakLabel').textContent=`${getStreakEmojis(sVal)} Streak`.trim();const target=PGA_TOUR_AVG[currentDistance];$('targetBadge').className='badge '+(pct>=target?'met':'not-met');$('targetBadge').innerHTML=pct>=target?`🏆 Better than PGA Tour Avg!<br>${target}% target`:`🎯 Target: ${target}% PGA Tour Avg`}
 
-      const target = PGA_TOUR_AVG[currentDistance];
-      const badge = document.getElementById('targetBadge');
+/* ---------- ACTIONS ---------- */
+function recordMade(){withTapLock(()=>{stats[currentDistance].made++;streaks[currentDistance]++;flash('flash-green');haptic(20);saveStats();saveStreaks();updateStats()})}
+function recordMissed(){withTapLock(()=>{stats[currentDistance].missed++;streaks[currentDistance]=0;flash('flash-red');haptic([10,40]);saveStats();saveStreaks();updateStats()})}
 
-      if (percent >= target) {
-        badge.className = 'badge met';
-        badge.innerHTML = `<strong>🏆 Nice Job, Pro! You're beating the PGA Tour avg!</strong><br>Target: ${target}%<div class="tour">PGA Tour Average Make Rate</div>`;
-      } else {
-        badge.className = 'badge not-met';
-        badge.innerHTML = `🎯 Target: ${target}%<div class="tour">PGA Tour Average Make Rate</div>`;
-      }
-    }
+function newSession(){if(!confirm('Start a new session?'))return;sessions.push({date:new Date().toISOString(),stats:JSON.parse(JSON.stringify(stats))});saveSessions();stats=defaultStats();streaks={};DISTANCES.forEach(d=>streaks[d]=0);saveStats();saveStreaks();updateStats();renderHistory()}
 
-    function newSession() {
-      if (!confirm('Start a new session? This will save the current session and reset all distances.')) return;
+function handleHistoryAction(){const sel=$('historyAction');const v=sel.value;sel.value='';if(v==='delete'){if(!confirm('Delete all session history?'))return;sessions=[];saveSessions();renderHistory()}if(v==='export'){exportHistoryCSV()}}
 
-      sessions.push({
-        date: new Date().toISOString(),
-        stats: JSON.parse(JSON.stringify(stats))
-      });
+function exportHistoryCSV(){if(!sessions.length){alert('No session history to export.');return}let csv='Session,Date,Distance,Made,Missed,Total,Make%\n';sessions.forEach((s,i)=>{const date=new Date(s.date).toLocaleString();DISTANCES.forEach(d=>{const st=s.stats[d]||{made:0,missed:0};const t=st.made+st.missed;if(t===0)return;const p=Math.round(st.made/t*100);csv+=`${i+1},${date},${d},${st.made},${st.missed},${t},${p}\n`})});const blob=new Blob([csv],{type:'text/csv'});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download=`foreputt_history_${new Date().toISOString().slice(0,10)}.csv`;document.body.appendChild(a);a.click();document.body.removeChild(a);URL.revokeObjectURL(url)}
 
-      saveSessions();
-      stats = defaultStats();
-      saveStats();
-      currentStreak = 0;
-      updateStats();
-      renderHistory();
-    }
+/* ---------- HISTORY ---------- */
+function renderHistory(){const h=$('history');h.innerHTML='';if(!sessions.length){h.innerHTML='<p style="opacity:.8">No sessions yet.</p>';return}sessions.slice().reverse().forEach((s,i)=>{let made=0,total=0;Object.values(s.stats).forEach(d=>{made+=d.made;total+=d.made+d.missed});const pct=total?Math.round(made/total*100):0;const idx=sessions.length-1-i;const card=document.createElement('div');card.className='history-card';card.onclick=()=>openSessionDetail(idx);card.innerHTML=`<strong>Session ${idx+1}</strong><br>${new Date(s.date).toLocaleDateString()} • ${pct}% (${total} putts)<div class="progress"><div class="progress-fill" style="width:${pct}%"></div></div>`;h.appendChild(card)})}
 
-    function handleHistoryAction() {
-      const sel = document.getElementById('historyAction');
-      const val = sel.value;
-      sel.value = '';
+function openSessionDetail(idx){const s=sessions[idx];$('sessionDetailTitle').textContent=`Session ${idx+1} — ${new Date(s.date).toLocaleString()}`;const body=$('sessionDetailBody');body.innerHTML='';DISTANCES.forEach(d=>{const st=s.stats[d]||{made:0,missed:0};const t=st.made+st.missed;if(t===0)return;const pct=Math.round(st.made/t*100);const star=pct>=PGA_TOUR_AVG[d]?' ⭐':'';const row=document.createElement('div');row.style.padding='6px 0';row.innerHTML=`<strong>${d} ft:</strong> ${st.made}/${t} (${pct}%) — PGA ${PGA_TOUR_AVG[d]}%${star}`;body.appendChild(row)});$('sessionDetail').style.display='block';$('sessionDetail').dataset.index=idx}
 
-      if (val === 'delete') {
-        if (!confirm('Delete all session history? This cannot be undone.')) return;
-        sessions = [];
-        saveSessions();
-        // Clear any pending undo since history is cleared
-        finalizeDelete();
-        renderHistory();
-      } else if (val === 'export') {
-        exportHistoryCSV();
-      }
-    }
+function closeSessionDetail(){$('sessionDetail').style.display='none';$('sessionDetail').dataset.index=''}
+function deleteSession(){const idx=Number($('sessionDetail').dataset.index);if(isNaN(idx))return;if(!confirm('Delete this session?'))return;sessions.splice(idx,1);saveSessions();closeSessionDetail();renderHistory()}
 
-    function exportHistoryCSV() {
-      if (sessions.length === 0) {
-        alert('No session history to export.');
-        return;
-      }
-
-      let csv = 'Session,Date,Distance,Made,Missed,Total,Make%,PGATourAvg%\n';
-
-      sessions.forEach((session, sIndex) => {
-        const sessionNum = sIndex + 1;
-        const date = new Date(session.date).toLocaleString();
-
-        DISTANCES.forEach(distance => {
-          const d = session.stats[distance] || { made: 0, missed: 0 };
-          const total = d.made + d.missed;
-          const percent = total === 0 ? 0 : Math.round((d.made / total) * 100);
-          const tour = PGA_TOUR_AVG[distance];
-
-          const row = [sessionNum, date, distance, d.made, d.missed, total, percent, tour]
-            .map(String)
-            .map(s => `"${s.replace(/"/g,'""')}"`)
-            .join(',');
-
-          csv += row + '\n';
-        });
-      });
-
-      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `putting_sessions_${new Date().toISOString().replace(/[:.]/g,'-')}.csv`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
-    }
-
-    function renderHistory() {
-      const historyDiv = document.getElementById('history');
-      historyDiv.innerHTML = '';
-
-      if (sessions.length === 0) {
-        historyDiv.innerHTML = '<p style="opacity:0.8">No past sessions yet.</p>';
-        return;
-      }
-
-      sessions.slice().reverse().forEach((session, index) => {
-        let totalMade = 0;
-        let totalPutts = 0;
-
-        Object.values(session.stats).forEach(d => {
-          totalMade += d.made;
-          totalPutts += d.made + d.missed;
-        });
-
-        const percent = totalPutts === 0 ? 0 : Math.round((totalMade / totalPutts) * 100);
-        const date = new Date(session.date).toLocaleDateString();
-
-        const div = document.createElement('div');
-        div.style.padding = '8px';
-        div.style.marginBottom = '6px';
-        div.style.background = '#1c7c5b';
-        div.style.borderRadius = '8px';
-        div.style.cursor = 'pointer';
-        div.innerHTML = `<strong>Session ${sessions.length - index}</strong><br>${date} • ${percent}% make rate (${totalPutts} putts)`;
-        div.onclick = () => openSessionDetail(sessions.length - 1 - index);
-        historyDiv.appendChild(div);
-      });
-    }
-
-    function openSessionDetail(sessionIndex) {
-      const session = sessions[sessionIndex];
-      const detail = document.getElementById('sessionDetail');
-      const body = document.getElementById('sessionDetailBody');
-      const title = document.getElementById('sessionDetailTitle');
-
-      // Remember which session is open so the Delete button can act on it
-      openedSessionIndex = sessionIndex;
-
-      title.textContent = `Session ${sessionIndex + 1} — ${new Date(session.date).toLocaleString()}`;
-      body.innerHTML = '';
-
-      DISTANCES.forEach(d => {
-        const stat = session.stats[d] || { made: 0, missed: 0 };
-        const total = stat.made + stat.missed;
-        const percent = total === 0 ? 0 : Math.round((stat.made / total) * 100);
-
-        const row = document.createElement('div');
-        row.style.padding = '6px 0';
-        const tourAvg = PGA_TOUR_AVG[d];
-        const star = percent >= tourAvg && total > 0 ? ' ⭐' : '';
-        row.innerHTML = `<strong>${star} ${d} ft:</strong> ${stat.made}/${total} (${percent}%) — PGA ${tourAvg}%`;
-        body.appendChild(row);
-      });
-
-      detail.style.display = 'block';
-    }
-
-    function closeSessionDetail() {
-      openedSessionIndex = null;
-      document.getElementById('sessionDetail').style.display = 'none';
-    }
-
-    // Undo helper functions
-    function showUndoBanner() {
-      const banner = document.getElementById('undoBanner');
-      if (!lastDeleted) {
-        banner.style.display = 'none';
-        return;
-      }
-      const messageEl = document.getElementById('undoMessage');
-      messageEl.textContent = `Deleted: ${new Date(lastDeleted.timestamp).toLocaleString()}`;
-      banner.style.display = 'flex';
-      updateUndoUI(); // immediate update
-    }
-
-    function hideUndoBanner() {
-      const banner = document.getElementById('undoBanner');
-      banner.style.display = 'none';
-    }
-
-    function clearUndoTimer() {
-      if (undoTimeoutId) {
-        clearTimeout(undoTimeoutId);
-        undoTimeoutId = null;
-      }
-      if (undoIntervalId) {
-        clearInterval(undoIntervalId);
-        undoIntervalId = null;
-      }
-      undoStartTime = null;
-      undoDuration = null;
-    }
-
-    function finalizeDelete() {
-      // After undo window expires, clear lastDeleted and remove stored value
-      lastDeleted = null;
-      localStorage.removeItem('lastDeletedSession');
-      clearUndoTimer();
-      hideUndoBanner();
-    }
-
-    function updateUndoUI() {
-      if (!lastDeleted || !undoStartTime || !undoDuration) {
-        hideUndoBanner();
-        return;
-      }
-      const elapsed = Date.now() - undoStartTime;
-      let remaining = Math.max(0, undoDuration - elapsed);
-      const secondsLeft = Math.ceil(remaining / 1000);
-      document.getElementById('undoSeconds').textContent = secondsLeft;
-
-      // progress ring update
-      const ring = document.getElementById('undoRing');
-      const R = 12;
-      const C = 2 * Math.PI * R;
-      ring.setAttribute('stroke-dasharray', C);
-      const fraction = remaining / undoDuration; // 1 -> full, 0 -> empty
-      const offset = C * (1 - fraction);
-      ring.setAttribute('stroke-dashoffset', offset);
-
-      // hide if expired
-      if (remaining <= 0) {
-        finalizeDelete();
-      }
-    }
-
-    function startUndoTimer(ms = UNDO_TIMEOUT) {
-      // clear previous timers if any
-      clearUndoTimer();
-      undoStartTime = Date.now();
-      undoDuration = ms;
-
-      // schedule finalizer
-      undoTimeoutId = setTimeout(() => {
-        finalizeDelete();
-      }, ms);
-
-      // interval to update UI frequently for smooth animation
-      undoIntervalId = setInterval(updateUndoUI, 100);
-      showUndoBanner();
-    }
-
-    function deleteSession() {
-      if (openedSessionIndex === null) return;
-
-      const confirmed = confirm('Delete this session? This will permanently erase the session and cannot be undone. Are you sure you want to delete this session forever? (You will have a short window to undo.)');
-      if (!confirmed) return;
-
-      // Save the deleted session so it can be undone
-      const sessionCopy = JSON.parse(JSON.stringify(sessions[openedSessionIndex]));
-      lastDeleted = {
-        session: sessionCopy,
-        index: openedSessionIndex,
-        timestamp: Date.now()
-      };
-      localStorage.setItem('lastDeletedSession', JSON.stringify(lastDeleted));
-
-      // Remove the session from the array and save
-      sessions.splice(openedSessionIndex, 1);
-      saveSessions();
-
-      // Close the detail and refresh the history list
-      closeSessionDetail();
-      renderHistory();
-
-      // Start undo timer
-      startUndoTimer(UNDO_TIMEOUT);
-    }
-
-    function undoDelete() {
-      if (!lastDeleted) return;
-
-      // Make sure index is within current bounds
-      const insertIndex = Math.min(Math.max(0, lastDeleted.index), sessions.length);
-      sessions.splice(insertIndex, 0, lastDeleted.session);
-      saveSessions();
-
-      // Clear the pending deletion
-      lastDeleted = null;
-      localStorage.removeItem('lastDeletedSession');
-      clearUndoTimer();
-      hideUndoBanner();
-
-      renderHistory();
-      alert('Session restored.');
-    }
-
-    // On load, check if there is a pending lastDeleted in storage and restore state
-    function loadLastDeletedFromStorage() {
-      const raw = localStorage.getItem('lastDeletedSession');
-      if (!raw) return null;
-      try {
-        const parsed = JSON.parse(raw);
-        const age = Date.now() - (parsed.timestamp || 0);
-        if (age >= UNDO_TIMEOUT) {
-          // expired
-          localStorage.removeItem('lastDeletedSession');
-          return null;
-        }
-        // still valid — restore and start timer for remaining time
-        lastDeleted = parsed;
-        startUndoTimer(UNDO_TIMEOUT - age);
-        return lastDeleted;
-      } catch (e) {
-        localStorage.removeItem('lastDeletedSession');
-        return null;
-      }
-    }
-
-    // initialize
-    updateStats();
-    renderHistory();
-    loadLastDeletedFromStorage();
-  </script>
+/* ---------- INIT ---------- */
+buildDistanceRow();updateStats();renderHistory();
+</script>
 </body>
 </html>
