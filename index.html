@@ -81,7 +81,7 @@ let tapLocked=false;const TAP_DELAY=300;
 function withTapLock(fn){if(tapLocked)return;tapLocked=true;fn();setTimeout(()=>tapLocked=false,TAP_DELAY)}
 function haptic(ms){if(navigator.vibrate)navigator.vibrate(ms)}
 function flash(cls){document.body.classList.add(cls);setTimeout(()=>document.body.classList.remove(cls),150)}
-function getStreakEmojis(v){if(v>=10)return'🔥🔥🔥🔥🔥';if(v>=5)return'🔥🔥🔥';if(v>=3)return'🔥🔥';if(v>=1)return'🔥';return''}
+function getStreakEmojis(v){if(v>=10)return'🔥🔥🔥🔥🔥';if(v>=7)return'🔥🔥🔥🔥';if(v>=5)return'🔥🔥🔥';if(v>=3)return'🔥🔥';if(v>=1)return'🔥';return''}
 
 function defaultStats(){const o={};DISTANCES.forEach(d=>o[d]={made:0,missed:0});return o}
 function loadStats(){return JSON.parse(localStorage.getItem('puttingStats'))||defaultStats()}
