@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Fore!Putt Practice App — Version 1.9.1</title>
+  <title>Fore!Putt Practice App — Version 1.10</title>
 
   <style>
     body{font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:#0b3d2e;color:#fff;margin:0;padding:20px}
@@ -54,7 +54,10 @@
 
   <div id="targetBadge" class="badge"></div>
 
-  <button onclick="newSession()" style="background:#0096FF;color:#000;height:48px;font-size:24px;box-shadow:0px 0 0 #0074c7,0 5px 0 #0074c7;">🔄 New Session</button>
+  <div style="display:flex;gap:20px;">
+  <button onclick="newSession()" style="background:#0096FF;color:#000;height:48px;font-size:20px;box-shadow:3px 0 0 #0074c7,0 3px 0 #0074c7;">🔄 New Session</button>
+  <button onclick="undoPutt()" style="background:#8a8a8a;color:#000;height:48px;font-size:20px;box-shadow:3px 0 0 #666666,0 3px 0 #666666;">↩️ Undo Last Putt</button>
+</div>
 
   <div style="display:flex;justify-content:space-between;align-items:center;margin-top:18px">
     <h3 style="margin:0">Session History</h3>
@@ -78,6 +81,7 @@ let stats = loadStats();
 let streaks = loadStreaks();
 let bestStreaks = defaultBestStreaks();
 let sessions = loadSessions();
+let puttHistory = [];
 
 // ---------- Utilities ----------
 const $ = id => document.getElementById(id);
@@ -201,6 +205,7 @@ function recordMade(){
     if(streaks[currentDistance] > bestStreaks[currentDistance]){
       bestStreaks[currentDistance] = streaks[currentDistance];
     }
+    puttHistory.push({ type:'made', distance: currentDistance });
     flash('flash-green');
     haptic(20);
     saveStats();
@@ -213,6 +218,7 @@ function recordMissed(){
   withTapLock(function(){
     stats[currentDistance].missed++;
     streaks[currentDistance] = 0;
+    puttHistory.push({ type:'missed', distance: currentDistance });
     flash('flash-red');
     haptic([10,40]);
     saveStats();
@@ -251,6 +257,7 @@ function newSession(){
   stats = defaultStats();
   streaks = loadStreaks();
   bestStreaks = defaultBestStreaks();
+  puttHistory = [];
   updateStats();
   renderHistory();
 }
@@ -311,6 +318,30 @@ function exportHistoryCSV(){
   a.href = URL.createObjectURL(blob);
   a.download = 'foreputt_history.csv';
   a.click();
+}
+
+function undoPutt(){
+  if(!puttHistory.length) return;
+
+  var last = puttHistory.pop();
+  currentDistance = last.distance;
+
+  if(last.type === 'made' && stats[currentDistance].made > 0){
+    stats[currentDistance].made--;
+    // Only reduce streak if last action was a made putt
+    if(streaks[currentDistance] > 0){
+      streaks[currentDistance]--;
+    }
+  }
+
+  if(last.type === 'missed' && stats[currentDistance].missed > 0){
+    stats[currentDistance].missed--;
+    // Do NOT affect streak when undoing a missed putt
+  }
+
+  saveStats();
+  saveStreaks();
+  updateStats();
 }
 
 // ---------- History ----------
