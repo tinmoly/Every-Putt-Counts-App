@@ -45,6 +45,12 @@
     /* v1.11 Splash Screen */
     .splash{position:fixed;inset:0;background:#0b3d2e;display:flex;align-items:center;justify-content:center;z-index:9999}
     .splash.hidden{opacity:0;pointer-events:none;transition:opacity .6s ease}
+    .splash.move-to-logo{background:transparent}
+    .splash.move-to-logo .splash-inner{
+      transition:transform .6s ease, opacity .6s ease;
+      transform:translate(var(--logo-x), var(--logo-y)) scale(var(--logo-scale));
+      opacity:0;
+    }
     .splash-inner{position:relative;width:360px}
     .splash-logo{width:100%;display:block;position:relative;z-index:1}
 
@@ -467,7 +473,26 @@ function renderHistory(){
 // ---------- Init ----------
 window.addEventListener('load', function(){
   setTimeout(function(){
-    document.getElementById('splash').classList.add('hidden');
+    const splash = document.getElementById('splash');
+    const splashInner = splash.querySelector('.splash-inner');
+    const headerLogo = document.querySelector('.app-logo');
+
+    const splashRect = splashInner.getBoundingClientRect();
+    const logoRect = headerLogo.getBoundingClientRect();
+
+    const dx = logoRect.left + logoRect.width/2 - (splashRect.left + splashRect.width/2);
+    const dy = logoRect.top + logoRect.height/2 - (splashRect.top + splashRect.height/2);
+    const scale = logoRect.width / splashRect.width;
+
+    splashInner.style.setProperty('--logo-x', dx + 'px');
+    splashInner.style.setProperty('--logo-y', dy + 'px');
+    splashInner.style.setProperty('--logo-scale', scale);
+
+    splash.classList.add('move-to-logo');
+
+    setTimeout(function(){
+      splash.classList.add('hidden');
+    }, 650);
   }, 2200);
 });
 
